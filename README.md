@@ -1,0 +1,2 @@
+**Avarice** \
+Bot in development

@@ -1,0 +1,15 @@
+# IDE files
+.idea
+/venv/
+
+# My images
+/images/
+
+# My database file
+database.sqlite
+
+# My config
+config/config.ini
+
+# My task file
+tasks
