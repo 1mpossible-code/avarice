@@ -1,5 +1,7 @@
+from flask import Flask, request
 import sys
 import telebot
+import os
 from telebot import types
 import bot_functions as bf
 from configloader import config
@@ -64,11 +66,11 @@ def main():
     @bot.message_handler(content_types=["text"])
     def message_handler(message):
         if message.chat.type == 'private':
-            bf.checking_messages(bot, message, types)
+            bf.handler(bot, types, message, None)
 
     @bot.callback_query_handler(func=lambda call: True)
     def callback_inline(call):
-        bf.checking_new_callback_data(bot, call, types)
+        bf.handler(bot, types, None, call)
 
     bot.polling(none_stop=True)
 

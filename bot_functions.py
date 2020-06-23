@@ -1,16 +1,34 @@
 import inscriptions
-from database.database import *
-
-
-class Catalog:
-    def __init__(self):
-        self.current_prod = 0
-        self.products = get_products()
-        self.prod_amount = len(self.products) - 1
+from database import *
+from classes.Catalog import Catalog
 
 
 # Creating new Catalog
-catalog = Catalog()
+catalog = Catalog(None)
+group = dict()
+
+
+def handler(bot, types, message, call):
+    global catalog
+    if message is not None or call is not None:
+        if message:
+            catalog = Catalog(message.chat.id)
+        elif call.message.chat.id:
+            catalog = Catalog(call.message.chat.id)
+    if message is not None or call is not None:
+        try:
+            if group[catalog.chat_id] is None:
+                print(group)
+        except KeyError:
+            group[catalog.chat_id] = catalog
+        if message and group[catalog.chat_id] is not None:
+            catalog = group[message.chat.id]
+        elif call and group[catalog.chat_id] is not None:
+            catalog = group[call.message.chat.id]
+    if message and message.text:
+        checking_messages(bot, message, types)
+    elif call and call.message:
+        checking_new_callback_data(bot, call, types)
 
 
 def sending_start_message(bot, message, types):
