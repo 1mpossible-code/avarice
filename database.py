@@ -102,6 +102,12 @@ def add_product(title, description, price, image, category_id):
     conn.commit()
 
 
+def set_cart_to_user(user_id, cart):
+    cursor.executemany("""UPDATE users 
+    SET cart = ? WHERE chat_id = ?""", ((cart, user_id), ))
+    conn.commit()
+
+
 def get_categories():
     cursor.execute("SELECT * FROM categories")
     return cursor.fetchall()
@@ -132,6 +138,12 @@ def get_user_by_id(user_id):
         return None
 
 
+def get_cart_by_id(user_id):
+    cursor.execute("SELECT cart FROM users WHERE chat_id LIKE ?", [user_id])
+    user_cart = cursor.fetchall()
+    return user_cart[0][0]
+
+
 def search_product(search_text):
     cursor.execute("SELECT * FROM products WHERE title LIKE ?", [search_text])
     log.debug(f"Search: {search_text}")
@@ -143,3 +155,4 @@ def search_product(search_text):
 # new_user("778508362", "Max", None, "+38095")
 # pr = get_products()
 # print(get_products())
+# print(get_cart_by_id(778508362))

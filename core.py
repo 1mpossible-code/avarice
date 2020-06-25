@@ -1,7 +1,5 @@
-from flask import Flask, request
 import sys
 import telebot
-import os
 from telebot import types
 import bot_functions as bf
 from configloader import config
@@ -62,6 +60,10 @@ def main():
     def start(message):
         bf.sending_start_message(bot, message, types)
         bf.start_func(message)
+
+    @bot.message_handler(commands=["help"])
+    def start(message):
+        bf.sending_help_message(bot, message, types)
 
     @bot.message_handler(content_types=["text"])
     def message_handler(message):
