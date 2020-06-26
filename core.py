@@ -62,8 +62,8 @@ def main():
         bf.start_func(message)
 
     @bot.message_handler(commands=["help"])
-    def start(message):
-        bf.sending_help_message(bot, message, types)
+    def helping(message):
+        bf.sending_help_message(bot, message)
 
     @bot.message_handler(content_types=["text"])
     def message_handler(message):

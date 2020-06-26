@@ -3,7 +3,6 @@ import logging
 
 # Initializing logs
 log = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
 
 log.debug("Trying to connect to database.sqlite or create new if not exist")
 conn = sqlite3.connect("database.sqlite", check_same_thread=False)
@@ -21,6 +20,7 @@ with conn:
             username VARCHAR,
             phone_number VARCHAR,
             cart TEXT,
+            is_making_order BOOLEAN,
             is_operator BOOLEAN,
             is_administrator BOOLEAN
         );
@@ -55,8 +55,8 @@ with conn:
              order_id INTEGER not null
                 primary key autoincrement,
             chat_id INTEGER,
-            user_full_name TEXT,
-            total_price INTEGER,
+            contacts TEXT,
+            order_items TEXT,
             order_date DATE,
             status INTEGER,
             note TEXT
@@ -76,16 +76,17 @@ def if_user_exists(chat_id):
 
 
 def new_user(chat_id, first_name, username, phone_number):
-    cursor.execute("""INSERT INTO users (chat_id, first_name, username, phone_number, is_operator, is_administrator) 
-    VALUES (?, ?, ?, ?, ?, ?)
-    """, (chat_id, first_name, username, phone_number, None, None))
+    cursor.execute("""INSERT INTO users (chat_id, first_name, username, phone_number, is_making_order, is_operator,
+     is_administrator) VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (chat_id, first_name, username, phone_number, 0, 0, 0))
     conn.commit()
 
 
-def new_order(chat_id, user_full_name, total_price, order_date, status, note):
+def new_order(chat_id, contacts, order_items, order_date, status, note):
     cursor.execute("""
-    INSERT INTO orders (chat_id, user_full_name, total_price, order_date, status, note) VALUES (?, ?, ?, ?, ?, ?)
-    """, (chat_id, user_full_name, total_price, order_date, status, note))
+    INSERT INTO orders (chat_id, contacts, order_items, order_date, status, note) 
+    VALUES (?, ?, ?, ?, ?, ?)
+    """, (chat_id, contacts, order_items, order_date, status, note))
     conn.commit()
 
 
@@ -151,8 +152,31 @@ def search_product(search_text):
     return products
 
 
-# add_product("cat", "this is good cat item", 300, "images/item_1.png", 12)
-# new_user("778508362", "Max", None, "+38095")
+def get_orders_by_id(user_id):
+    cursor.execute("SELECT * FROM orders WHERE chat_id LIKE ?", [user_id])
+    user_cart = cursor.fetchall()
+    return user_cart
+
+
+def get_making_order_by_id(user_id):
+    cursor.execute("SELECT is_making_order FROM users WHERE chat_id LIKE ?", [user_id])
+    making_orders = cursor.fetchall()
+    return making_orders[0][0]
+
+
+def set_making_order_status_to_user(user_id, status):
+    cursor.executemany("""UPDATE users 
+    SET is_making_order = ? WHERE chat_id = ?""", ((status, user_id), ))
+    conn.commit()
+
+
+# add_product("cat2", "this is good cat item", 200, "images/item_1.png", 12)
+# new_user("1111", "Max2", None, "None")
 # pr = get_products()
 # print(get_products())
 # print(get_cart_by_id(778508362))
+# new_order(778508362, "Bla Bla Bla", "items", "12.12.2020", 1, "None")
+# print(get_orders_by_id(778508362))
+# [(1, 778508362, 'Bla Bla Bla', 'Address', 'items', 300, '12.12.2020', 0, 'None'),
+# (2, 778508362, 'Bla Bla Bla2', 'Address', 'items', 300, '12.12.2020', 0, 'None')]
+# print(get_making_order_by_id(1111))
