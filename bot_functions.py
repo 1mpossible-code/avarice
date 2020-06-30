@@ -8,8 +8,7 @@ from classes.order import Order
 from database import *
 import logging
 
-
-log = logging.getLogger(__name__)
+log = logging.getLogger("bot_functions")
 
 # Creating new Catalog
 catalog = Catalog(None)
@@ -36,7 +35,7 @@ def creating_unique_catalog(message, call):
     if message is not None or call is not None:
         try:
             if catalog_group[catalog.chat_id] is None:
-                print(catalog_group)
+                log.debug(catalog_group)
         except KeyError:
             catalog_group[catalog.chat_id] = catalog
         if message and catalog_group[catalog.chat_id] is not None:
@@ -81,15 +80,15 @@ def creating_start_markup_buttons(types):
 def checking_messages(bot, message, types):
     # Making order
     if get_making_order_by_id(message.chat.id):
-        global making_order_group
+        # global making_order_group
         try:
             steps = making_order_group[message.chat.id][0]
             params = making_order_group[message.chat.id][1]
-            checking_order_creating_steps(bot, message, steps, params)
+            checking_order_creating_steps(bot, message, types, steps, params)
         except KeyError:
             making_order_group[message.chat.id] = [
                 {
-                    "city": False,
+                    "city": True,
                     "number_of_departament": False,
                     "full_name": False,
                     "number": False,
@@ -105,7 +104,7 @@ def checking_messages(bot, message, types):
             ]
             steps = making_order_group[message.chat.id][0]
             params = making_order_group[message.chat.id][1]
-            checking_order_creating_steps(bot, message, steps, params)
+            checking_order_creating_steps(bot, message, types, steps, params)
     else:
         # Main buttons
         if message.text == inscriptions.catalog:
@@ -124,12 +123,10 @@ def checking_messages(bot, message, types):
             bot.send_message(message.chat.id, inscriptions.unrecognized_message, parse_mode='html')
 
 
-def checking_order_creating_steps(bot, message, steps, params):
-    if not steps["city"]:
-        params["city"] = message.text
-        steps["city"] = True
-    elif not steps["number_of_departament"]:
+def checking_order_creating_steps(bot, message, types, steps, params):
+    if not steps["number_of_departament"]:
         bot.send_message(message.chat.id, inscriptions.number_of_departament)
+        params["city"] = message.text
         steps["number_of_departament"] = True
     elif not steps["full_name"]:
         bot.send_message(message.chat.id, inscriptions.full_name)
@@ -145,23 +142,28 @@ def checking_order_creating_steps(bot, message, steps, params):
         steps["payment_system"] = True
     else:
         params["payment_system"] = message.text
-        bot.send_message(message.chat.id, inscriptions.done, parse_mode='html')
-        user = get_user_by_id(message.chat.id)
-        date = datetime.datetime.now()
-        date_id = re.search(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", str(date))
-        date_id = date_id.group()
         cart = Cart(message.chat.id)
-        new_order(message.chat.id, json.dumps({
-            "Chat ID": message.chat.id,
-            "Phone": params["number"],
-            "Name": user[1],
-            "Username": user[2],
-        }), cart.return_cart_json(), date_id, 0, json.dumps(params))
-        set_making_order_status_to_user(message.chat.id, 0)
+        catalog.set_pre_order_params(params)
+        markup = create_pre_order_markup(types)
+        items_arr = make_items_array(message)
+        items_text = items_arr[0]
+        result_sum = items_arr[1]
+        params_text = ""
+        for k in params:
+            params_text += "<b>{0}: </b>{1}\n".format(inscriptions.params_text[k], params[k])
+        bot.send_message(message.chat.id, "{1}\n\n---\n{0}".format(items_text,
+                                                                   inscriptions.is_everything_right) +
+                         "---\n\n{1}<b>Итого: </b>{0}".format(result_sum, params_text) +
+                         inscriptions.currency, parse_mode='html', reply_markup=markup)
+        cart.pre_order_params = params
 
 
-def send_to_operators():
-    log.debug("Sending to operator")
+def create_pre_order_markup(types):
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    item1 = types.InlineKeyboardButton(inscriptions.order_true_btn, callback_data="order_true")
+    item2 = types.InlineKeyboardButton(inscriptions.order_false_btn, callback_data="order_false")
+    markup.add(item1, item2)
+    return markup
 
 
 def catalog_function(bot, message, types):
@@ -212,7 +214,6 @@ def how_many_in_cart(chat_id, products, current_prod_catalog):
     try:
         cur_prod_amount = products_in_cart[str(products[current_prod_catalog][0])][7]["amount"]
         cur_prod_amount_string = f"({cur_prod_amount}) "
-        log.error(cur_prod_amount_string)
         return cur_prod_amount_string
     except TypeError:
         return ""
@@ -225,6 +226,8 @@ def checking_new_callback_data(bot, call, types):
         callback_data_catalog(bot, call, types)
         callback_data_cart(bot, call)
         callback_data_order(bot, call)
+        if get_making_order_by_id(call.message.chat.id):
+            callback_data_pre_order(bot, call)
 
 
 def callback_data_catalog(bot, call, types):
@@ -266,7 +269,7 @@ def cart_function(bot, message, types):
         result_sum = items_array[1]
         markup = cart_markup_create(types)
         bot.send_message(message.chat.id, "<b>Корзина</b>\n\n---\n{0}".format(items_text) +
-                                          "---\n\n<b>Итого: </b>{0}".format(result_sum) +
+                         "---\n\n<b>Итого: </b>{0}".format(result_sum) +
                          inscriptions.currency, reply_markup=markup, parse_mode='html')
     elif items_array is None:
         bot.send_message(message.chat.id, inscriptions.cart_is_empty, parse_mode='html')
@@ -331,7 +334,6 @@ def callback_make_order(bot, call):
 
 
 def start_making_order(bot, call):
-    # Город доставки, номер отделения, полное имя пользователя, номер телефона, оплата
     bot.send_message(call.message.chat.id, inscriptions.city_of_dislocation)
     set_making_order_status_to_user(call.message.chat.id, 1)
 
@@ -360,6 +362,56 @@ def create_orders_markup(types, message):
         item = types.InlineKeyboardButton(order[0], callback_data=order[0])
         markup.add(item)
     return markup
+
+
+def callback_data_pre_order(bot, call):
+    if call.data == "order_true":
+        user = get_user_by_id(call.message.chat.id)
+        date = datetime.datetime.now()
+        date_id = re.search(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", str(date))
+        date_id = date_id.group()
+        cart = Cart(call.message.chat.id)
+        params = catalog.pre_order_params
+        new_order(call.message.chat.id, json.dumps({
+            "Chat ID": call.message.chat.id,
+            "Phone": params["number"],
+            "Name": user[1],
+            "Username": user[2],
+        }), cart.return_cart_json(), date_id, 0, json.dumps(params))
+        set_phone_number_to_user(call.message.chat.id, params["number"])
+        set_making_order_status_to_user(call.message.chat.id, 0)
+        send_to_operators(bot, call.message)
+        bot.send_message(call.message.chat.id,
+                         inscriptions.order_true.format(max(get_orders_ids_by_id(778508362))[0]))
+        set_making_order_status_to_user(call.message.chat.id, 0)
+        callback_clear_cart(call)
+    elif call.data == "order_false":
+        set_making_order_status_to_user(call.message.chat.id, 0)
+        catalog.pre_order_params = None
+        bot.send_message(call.message.chat.id, inscriptions.order_false)
+
+
+def send_to_operators(bot, message):
+    # try:
+    user = get_user_by_id(message.chat.id)
+    params = catalog.pre_order_params
+    items_arr = make_items_array(message)
+    items_text = items_arr[0]
+    result_sum = items_arr[1]
+    order = get_orders_by_id(message.chat.id)[len(get_orders_by_id(message.chat.id)) - 1]
+    params_text = ""
+    for k in params:
+        params_text += "<b>{0}: </b>{1}\n".format(inscriptions.params_text[k], params[k])
+    user_info_str = "------------------------\n" + f"<b>Имя:</b> {user[1]}\n" + f"<b>Username:</b> {user[2]}\n" + \
+                    f"<b>Номер телефона:</b> {user[3]}\n" + f"<b>Telegram order ID:</b> | {order[0]} |\n" + \
+                    f"<b>Дата:</b> {order[4]}\n" + "-----\n" + \
+                    f"Статус: {inscriptions.status[order[5]]}\n" + "-----\n\n"
+    for operator_id in get_operators():
+        bot.send_message(operator_id, user_info_str + "<b>Корзина</b>\n\n---\n{0}".format(items_text) +
+                         "---\n\n{1}<b>Итого: </b>{0}".format(result_sum, params_text) +
+                         inscriptions.currency, parse_mode='html')
+    # except TypeError as e:
+    #     log.error(f"No operators! {e}")
 
 
 def faq_function(bot, message):

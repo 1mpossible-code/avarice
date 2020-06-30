@@ -7,3 +7,7 @@ class Catalog:
         self.current_prod = 0
         self.products = get_products()
         self.prod_amount = len(self.products) - 1
+        self.pre_order_params = None
+
+    def set_pre_order_params(self, params):
+        self.pre_order_params = params

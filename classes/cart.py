@@ -1,5 +1,8 @@
 import json
 from database import get_cart_by_id, set_cart_to_user
+import logging
+
+log = logging.getLogger(__name__)
 
 
 class Cart:
@@ -11,9 +14,8 @@ class Cart:
         item = list(item)
         item_id = str(item[0])
         try:
-            print(self.items)
             if not self.items[item_id]:
-                print(self.items)
+                log.debug("No items in cart")
             elif self.items[item_id]:
                 self.items[item_id][7]['amount'] += 1
         except KeyError:

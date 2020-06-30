@@ -103,12 +103,6 @@ def add_product(title, description, price, image, category_id):
     conn.commit()
 
 
-def set_cart_to_user(user_id, cart):
-    cursor.executemany("""UPDATE users 
-    SET cart = ? WHERE chat_id = ?""", ((cart, user_id), ))
-    conn.commit()
-
-
 def get_categories():
     cursor.execute("SELECT * FROM categories")
     return cursor.fetchall()
@@ -145,17 +139,16 @@ def get_cart_by_id(user_id):
     return user_cart[0][0]
 
 
-def search_product(search_text):
-    cursor.execute("SELECT * FROM products WHERE title LIKE ?", [search_text])
-    log.debug(f"Search: {search_text}")
-    products = cursor.fetchall()
-    return products
-
-
 def get_orders_by_id(user_id):
     cursor.execute("SELECT * FROM orders WHERE chat_id LIKE ?", [user_id])
     user_cart = cursor.fetchall()
     return user_cart
+
+
+def get_orders_ids_by_id(user_id):
+    cursor.execute("SELECT order_id FROM orders WHERE chat_id LIKE ?", [user_id])
+    order_ids = cursor.fetchall()
+    return order_ids
 
 
 def get_making_order_by_id(user_id):
@@ -164,10 +157,38 @@ def get_making_order_by_id(user_id):
     return making_orders[0][0]
 
 
+def get_operators():
+    cursor.execute("SELECT chat_id FROM users WHERE is_operator LIKE ?", [1])
+    operators = cursor.fetchall()
+    try:
+        return operators[0]
+    except IndexError:
+        return None
+
+
+def set_cart_to_user(user_id, cart):
+    cursor.executemany("""UPDATE users 
+    SET cart = ? WHERE chat_id = ?""", ((cart, user_id), ))
+    conn.commit()
+
+
 def set_making_order_status_to_user(user_id, status):
     cursor.executemany("""UPDATE users 
     SET is_making_order = ? WHERE chat_id = ?""", ((status, user_id), ))
     conn.commit()
+
+
+def set_phone_number_to_user(user_id, phone):
+    cursor.executemany("""UPDATE users 
+    SET phone_number = ? WHERE chat_id = ?""", ((phone, user_id), ))
+    conn.commit()
+
+
+def search_product(search_text):
+    cursor.execute("SELECT * FROM products WHERE title LIKE ?", [search_text])
+    log.debug(f"Search: {search_text}")
+    products = cursor.fetchall()
+    return products
 
 
 # add_product("cat2", "this is good cat item", 200, "images/item_1.png", 12)
@@ -180,3 +201,5 @@ def set_making_order_status_to_user(user_id, status):
 # [(1, 778508362, 'Bla Bla Bla', 'Address', 'items', 300, '12.12.2020', 0, 'None'),
 # (2, 778508362, 'Bla Bla Bla2', 'Address', 'items', 300, '12.12.2020', 0, 'None')]
 # print(get_making_order_by_id(1111))
+# print(get_operators())
+# print(max(get_orders_ids_by_id(778508362))[0])
